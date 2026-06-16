@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مشغل YouTube</title>
+<title>الرادود عباس الأعرجي</title>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@700&display=swap');
@@ -18,59 +18,6 @@ html,body{
   background:#000;
 }
 
-.wrapper{
-  width:100%;
-  max-width:1100px;
-  padding:10px;
-  margin:auto;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-  gap:12px;
-  justify-items:center;
-}
-
-.card{
-  background:rgba(255,255,255,.92);
-  border-radius:10px;
-  padding:4px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  cursor:pointer;
-  width:100%;
-  max-width:180px;
-  border:1px solid rgba(0,0,0,0.2);
-  transition:transform 0.2s;
-}
-
-.card:hover {
-  transform:scale(1.02);
-  box-shadow:0 4px 8px rgba(255,255,255,0.2);
-}
-
-.card img{
-  width:100%;
-  aspect-ratio:16/9;
-  object-fit:cover;
-  border-radius:8px;
-}
-
-.card-title{
-  margin-top:4px;
-  font-size:13px;
-  color:#000;
-  text-align:center;
-  font-weight:700;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  line-height:1.2;
-  padding:2px 0;
-}
-
 #playerPage{
   position:fixed;
   top:0;
@@ -80,12 +27,22 @@ html,body{
   width:100%;
   height:100vh;
   background:#000;
-  display:none;
+  display:block;
   z-index:9999;
-  overflow:hidden;
+  overflow-y:scroll;
+  overflow-x:hidden;
+  scroll-snap-type:y mandatory;
 }
 
-#youtubeFrame{
+.video-container{
+  width:100%;
+  height:100vh;
+  scroll-snap-align:start;
+  position:relative;
+  background:#000;
+}
+
+.video-container iframe{
   width:100%;
   height:100%;
   border:none;
@@ -93,7 +50,7 @@ html,body{
   z-index:1;
 }
 
-#ytPoster{
+.video-container .poster{
   position:absolute;
   top:0;
   left:0;
@@ -108,104 +65,132 @@ html,body{
 
 <body>
 
-<div class="wrapper" id="home">
-  <div class="grid" id="channelsGrid"></div>
-</div>
-
-<div id="playerPage">
-  <img id="ytPoster">
-  <iframe id="youtubeFrame" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-</div>
+<div id="playerPage"></div>
 
 <script>
 const channelsData = `
-اه عليك يابو اليمه
-https://www.youtube.com/watch?v=sZigdJQurGg
-كوم لزينب يا واليها
-https://www.youtube.com/watch?v=V5ZuMs3tVmk
-رثاء - جلسة حسينية
-https://www.youtube.com/watch?v=hinKKnK8kmc
-رثاء - جلسة حسينية
-https://www.youtube.com/watch?v=qOK7vYWkBnQ
-نام برغد وتهنه
 https://www.youtube.com/shorts/hcjoqVCqKbc
-محرم
 https://www.youtube.com/shorts/UfTCtmOZd7o
-أذا مومثلي خادم
 https://www.youtube.com/shorts/qSeEjuamYdY
+
 `;
 
-const grid = document.getElementById("channelsGrid");
-
-// دالة لاستخراج ID من أي رابط يوتيوب (عادي أو شورتس)
 function getYouTubeId(url){
-  // للشورتس: youtube.com/shorts/ID
   let regex = /youtube\.com\/shorts\/([^?&/]+)/;
   let match = url.match(regex);
   if(match) return match[1];
   
-  // للروابط العادية
   regex = /(?:youtube\.com\/(?:.*v=|live\/)|youtu\.be\/)([^&?/]+)/;
   match = url.match(regex);
   return match ? match[1] : null;
 }
 
 const lines = channelsData.trim().split('\n').filter(l => l.trim() !== "");
-for (let i = 0; i < lines.length; i += 2) {
-    const title = lines[i].trim();
-    const stream = lines[i+1]?.trim();
-    if (title && stream) {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.dataset.stream = stream;
-        card.dataset.title = title;
-        
-        const ytId = getYouTubeId(stream);
-        const img = ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : '';
-        card.innerHTML = `<img src="${img}"><div class="card-title">${title}</div>`;
-        grid.appendChild(card);
-    }
+const videoUrls = [];
+for (let i = 0; i < lines.length; i++) {
+  const url = lines[i].trim();
+  if (url.startsWith('http')) {
+    videoUrls.push(url);
+  }
 }
 
-const cards = document.querySelectorAll('.card');
 const playerPage = document.getElementById("playerPage");
-const youtubeFrame = document.getElementById("youtubeFrame");
-const ytPoster = document.getElementById("ytPoster");
-const home = document.getElementById("home");
+let videoIds = [];
+let currentPlayingIndex = -1;
+let scrollTimeout = null;
+
+videoUrls.forEach((url) => {
+  const ytId = getYouTubeId(url);
+  if (ytId) {
+    videoIds.push(ytId);
+  }
+});
+
+videoIds.forEach((ytId, index) => {
+  const container = document.createElement('div');
+  container.className = 'video-container';
+  container.dataset.index = index;
+  
+  const poster = document.createElement('img');
+  poster.className = 'poster';
+  poster.src = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+  poster.style.display = 'block';
+  
+  const iframe = document.createElement('iframe');
+  iframe.dataset.index = index;
+  iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&mute=1`;
+  iframe.allow = "autoplay; encrypted-media";
+  iframe.allowFullscreen = true;
+  
+  iframe.onload = () => {
+    poster.style.display = 'none';
+  };
+  
+  container.appendChild(poster);
+  container.appendChild(iframe);
+  playerPage.appendChild(container);
+});
+
+function playVideo(index) {
+  if (currentPlayingIndex === index) return;
+  if (index < 0 || index >= videoIds.length) return;
+  
+  if (currentPlayingIndex >= 0 && currentPlayingIndex < videoIds.length) {
+    const prevContainer = playerPage.querySelector(`.video-container[data-index="${currentPlayingIndex}"]`);
+    if (prevContainer) {
+      const prevIframe = prevContainer.querySelector('iframe');
+      if (prevIframe) {
+        prevIframe.src = `https://www.youtube.com/embed/${videoIds[currentPlayingIndex]}?autoplay=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&mute=1`;
+      }
+    }
+  }
+  
+  const container = playerPage.querySelector(`.video-container[data-index="${index}"]`);
+  if (container) {
+    const iframe = container.querySelector('iframe');
+    if (iframe) {
+      iframe.src = `https://www.youtube.com/embed/${videoIds[index]}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&mute=0`;
+      currentPlayingIndex = index;
+    }
+  }
+}
+
+function handleScroll() {
+  clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    const containers = playerPage.querySelectorAll('.video-container');
+    let visibleIndex = -1;
+    let maxVisibility = 0;
+    
+    containers.forEach((container, index) => {
+      const rect = container.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const visibleTop = Math.max(rect.top, 0);
+      const visibleBottom = Math.min(rect.bottom, viewportHeight);
+      const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+      const visibleRatio = visibleHeight / viewportHeight;
+      
+      if (visibleRatio > maxVisibility) {
+        maxVisibility = visibleRatio;
+        visibleIndex = index;
+      }
+    });
+    
+    if (visibleIndex >= 0 && visibleIndex !== currentPlayingIndex) {
+      playVideo(visibleIndex);
+    }
+  }, 150);
+}
 
 window.addEventListener('load', function() {
-  const savedScroll = localStorage.getItem('scrollPosition');
-  if (savedScroll) {
-    setTimeout(() => {
-      window.scrollTo({ top: parseInt(savedScroll), behavior: 'auto' });
-      localStorage.removeItem('scrollPosition');
-    }, 100);
-  }
+  setTimeout(() => {
+    if (videoIds.length > 0) {
+      playVideo(0);
+    }
+  }, 500);
+  
+  playerPage.addEventListener('scroll', handleScroll);
 });
-
-cards.forEach(card=>{
-  card.onclick = ()=>{
-    const ytId = getYouTubeId(card.dataset.stream);
-    if(!ytId) return;
-    localStorage.setItem('scrollPosition', window.scrollY);
-    ytPoster.src = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
-    ytPoster.style.display = 'block';
-    home.style.display = 'none';
-    playerPage.style.display = 'block';
-    youtubeFrame.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`;
-    youtubeFrame.onload = ()=>{ ytPoster.style.display = 'none'; };
-    history.pushState({playing:true}, "");
-  };
-});
-
-window.onpopstate = ()=>{
-  if(playerPage.style.display === "block"){
-    playerPage.style.display = 'none';
-    home.style.display = 'block';
-    youtubeFrame.src = "";
-    ytPoster.style.display = 'none';
-  }
-};
 </script>
 
 </body>
