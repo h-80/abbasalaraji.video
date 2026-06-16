@@ -106,7 +106,7 @@ function createVideoContainer(ytId, index) {
 
   const iframe = document.createElement('iframe');
   iframe.dataset.index = index;
-  iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&mute=1`;
+  iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&mute=0`;
   iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
   iframe.allowFullscreen = true;
   iframe.onload = () => {
@@ -120,7 +120,7 @@ function createVideoContainer(ytId, index) {
 
 function setIframeSrc(iframe, ytId, autoplay = false) {
   const autoplayValue = autoplay ? 1 : 0;
-  iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=${autoplayValue}&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&mute=1`;
+  iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=${autoplayValue}&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&mute=0`;
 }
 
 function playVideo(index) {
